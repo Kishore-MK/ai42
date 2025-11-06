@@ -19,7 +19,8 @@
     "langchain": "^1.0.3",
     "openai": "^6.8.1",
     "postgres": "^3.4.7",
-    "x402-hono": "^0.7.1"
+    "x402-hono": "^0.7.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
