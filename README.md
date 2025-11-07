@@ -1,6 +1,7 @@
 AI42 LLM Gateway - Whitepaper v0
 
-Abstract
+**Abstract**
+
 AI42 is a permissionless AI infrastructure service that enables autonomous agents to access premium language models through Solana-based micropayments. By combining intelligent model routing, response caching, and streaming capabilities with x402 payment protocol, we eliminate subscription barriers and enable true pay-per-use AI access for the agent economy.
 
 1. Problem Statement
