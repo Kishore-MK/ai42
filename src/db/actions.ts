@@ -35,8 +35,7 @@ export async function savePayment(
   cacheHit: boolean,
 
 ) {
-  await db.insert(payments).values({
-    transactionHash,
+  await db.insert(payments).values({ 
   walletAddress,
   amount,
   status,

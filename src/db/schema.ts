@@ -16,8 +16,7 @@ import { boolean, integer, numeric, pgEnum, pgTable, text, timestamp, uuid, vect
 
  
 export const payments = pgTable('payments', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  transactionHash: text('transaction_hash').unique().notNull(),
+  id: uuid('id').defaultRandom().primaryKey(), 
   walletAddress: text('wallet_address').notNull(),
   amount: numeric('amount').notNull(),
   timestamp: timestamp('timestamp').defaultNow().notNull(),

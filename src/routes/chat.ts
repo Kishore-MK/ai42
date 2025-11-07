@@ -1,24 +1,52 @@
 import { Hono } from 'hono';
-import { z } from 'zod';
-import { validator } from 'hono/validator';
+import { config } from '../config/env.js'; 
 import { v4 as uuidv4 } from 'uuid';
 import { ChatRequest, ChatResponse, ModelIdentifier, Priority } from '../types/index.js';
 import { callGemini } from '../services/gemini.js';
 import { selectModel } from '../services/router.js';
 import { generateHash, getCached, setCache } from '../services/cache.js';
 import { calculateCost, calculateCachedCost, lamportsToUSDC } from '../lib/pricing.js';
-import { paymentMiddleware } from '../middleware/payment.js';
+import { paymentMiddleware, Network, Resource } from "x402-hono";
 import { db } from '../db/index.js';
 import { payments } from '../db/schema.js';
-
-const chatRouter = new Hono();
+import { X402PaymentHandler } from 'x402-solana/server';
+import { SolanaNetwork } from 'x402-solana/types';
+import { getSignerAddress } from '../lib/helper.js';
  
 
+const chatRouter = new Hono();
+
+const x402 = new X402PaymentHandler({
+  network: config.network as SolanaNetwork,
+  treasuryAddress: config.address,
+  facilitatorUrl: config.facilitatorUrl,
+});
+
+ 
+chatRouter.use(
+    paymentMiddleware(
+      config.address as `0x${string}`,
+      {
+        "/chat": {
+          price: "$0.025",
+          network: config.network as Network,
+        },
+      },
+      {
+        url: config.facilitatorUrl as Resource,
+      },
+    ),
+  );
+
+
+   
 chatRouter.post(
   '/',
   async (c) => {
     const requestId = uuidv4();
-    const body = await c.req.json() as ChatRequest;
+    const body = await c.req.json() as ChatRequest; 
+    const paymentHeader = x402.extractPayment(c.req.header()) 
+    const walletAddress = await getSignerAddress(paymentHeader || "");
     
     const { message, model: modelOverride, priority, stream } = body;
 
@@ -77,13 +105,17 @@ chatRouter.post(
 
     setCache(requestHash, llmResponse);
 
-    try {
-      const walletAddress ='anonymous';
-      const transactionHash = 'no-payment';
-
-      await db.insert(payments).values({
-        transactionHash,
+    try { 
+      console.log('Saving payment:', { 
         walletAddress,
+        amount: cost.toString(),
+        status: 'completed',
+        modelUsed: selectedModel,
+        tokensUsed: llmResponse.tokens.total,
+        cacheHit: false
+      });
+      await db.insert(payments).values({ 
+        walletAddress ,
         amount: cost.toString(),
         status: 'completed',
         modelUsed: selectedModel,
