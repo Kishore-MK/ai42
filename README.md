@@ -205,4 +205,38 @@ Open provider marketplace
 9. Conclusion
 AI42 removes friction between autonomous agents and premium AI services by combining intelligent infrastructure with Solana-based micropayments. By enabling permissionless, pay-per-use access to multiple LLM providers, we lay groundwork for a truly autonomous agent economy where AI can transact independently and efficiently.
 
- 
+
+10. Project Structure
+drizzle
+src
+├── agent
+│   ├── chat.ts
+│   └── lib.ts
+├── config
+│   └── env.ts
+├── db
+│   ├── actions.ts
+│   ├── index.ts
+│   └── schema.ts
+├── index.ts
+├── lib
+│   ├── pricing.ts
+│   └── x402.ts
+├── middleware
+│   ├── logger.ts
+│   └── payment.ts
+├── routes
+│   └── chat.ts
+├── services
+│   ├── cache.ts
+│   ├── gemini.ts
+│   ├── groq.ts
+│   └── router.ts
+└── types
+    └── index.ts
+.env
+.gitignore
+drizzle.config.ts
+package.json
+README.md
+tsconfig.json

@@ -1,69 +1,36 @@
 import { Hono } from "hono";
-import { serve } from "@hono/node-server";
-import { paymentMiddleware, Network, Resource } from "x402-hono";
-
-import 'dotenv/config';
-import { getResponse } from "./agent/chat.js";
-import { createUser } from "./db/actions.js";
-
-
-const facilitatorUrl = process.env.FACILITATOR_URL as Resource;
-const payTo = process.env.ADDRESS as `0x${string}`;
-const network = process.env.NETWORK as Network;
-
-if (!facilitatorUrl || !payTo || !network) {
-  console.error("Missing required environment variables");
-  process.exit(1);
-}
+import { serve } from "@hono/node-server"; 
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { config } from './config/env.js';
+import chatRouter from './routes/chat.js';
 
 const app = new Hono();
 
-console.log("Server is running");
+app.use('*', logger());
+app.use('*', cors());
 
-app.use(
-  paymentMiddleware(
-    payTo,
-    {
-      "/weather": {
-        price: "$0.001",
-        network,
-      },
-    },
-    {
-      url: facilitatorUrl,
-    },
-  ),
-);
-
-
-app.post('/chat', async (c) => {
-  const { message, userId } = await c.req.json()
-
-  if (!userId) {
-    return c.json({Error:"userId required"})
-  }
-  
-  const result= await getResponse(message,userId)
-  
-  
-  return c.json({ response: result })
-})
-
-app.post('/signup', async (c) => {
-  const userId = await createUser()
-  return c.json({ userId })
-})
-
-app.get("/weather", c => {
-  return c.json({
-    report: {
-      weather: "sunny",
-      temperature: 70,
-    },
+app.get('/health', (c) => {
+  return c.json({ 
+    status: 'healthy',
+    timestamp: Date.now()
   });
 });
 
+app.route('/chat', chatRouter);
+
+app.onError((err, c) => {
+  console.error('Error:', err);
+  return c.json({ 
+    error: err.message || 'Internal server error' 
+  }, 500);
+});
+
+console.log(`AI42 Gateway starting on port ${config.port}`);
+
+ 
+
 serve({
   fetch: app.fetch,
-  port: 4021,
+  port: config.port,
 });

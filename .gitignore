@@ -10,7 +10,7 @@
 
 # deps
 node_modules/
-
+request.http
 # env
 .env
 .env.production

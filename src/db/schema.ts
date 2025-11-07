@@ -1,23 +1,28 @@
-import { pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
+import { boolean, integer, numeric, pgEnum, pgTable, text, timestamp, uuid, vector } from 'drizzle-orm/pg-core'
+ 
+// export const users = pgTable('users', {
+//   id: uuid('id').defaultRandom().primaryKey(),
+//   createdAt: timestamp('created_at').defaultNow()
+// })
 
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  createdAt: timestamp('created_at').defaultNow()
-})
+// export const conversations = pgTable('conversations', {
+//   id: uuid('id').defaultRandom().primaryKey(),
+//   userId: uuid('user_id').references(() => users.id),
+//   userMessage: text('user_message').notNull(),
+//   agentMessage: text('agent_message').notNull(),
+//   embedding: vector('embedding', { dimensions: 768 }),
+//   createdAt: timestamp('created_at').defaultNow()
+// })
 
-export const conversations = pgTable('conversations', {
+ 
+export const payments = pgTable('payments', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id),
-  userMessage: text('user_message').notNull(),
-  agentMessage: text('agent_message').notNull(),
-  embedding: vector('embedding', { dimensions: 768 }),
-  createdAt: timestamp('created_at').defaultNow()
-})
-
-export const documents = pgTable('documents', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  content: text('content').notNull(),
-  embedding: vector('embedding', { dimensions:  768 }),
-  metadata: text('metadata'),
-  createdAt: timestamp('created_at').defaultNow()
+  transactionHash: text('transaction_hash').unique().notNull(),
+  walletAddress: text('wallet_address').notNull(),
+  amount: numeric('amount').notNull(),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  status: text('status').notNull(),
+  modelUsed: text('model_used').notNull(),
+  tokensUsed: integer('tokens_used').notNull(),
+  cacheHit: boolean('cache_hit').notNull()
 })
