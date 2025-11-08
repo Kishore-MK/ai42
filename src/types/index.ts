@@ -14,8 +14,8 @@ export interface Message {
 // ============================================
 
 export type ModelIdentifier = 
-  | 'groq-llama-70b' 
-  | 'groq-llama-8b' 
+  | 'llama-3.3-70b-versatile'
+  | 'openai/gpt-oss-120b'
   | 'gemini-2.5-flash' 
   | 'gemini-2.5-pro';
 
@@ -69,7 +69,7 @@ export interface StreamChunk {
 export interface LLMServiceResponse {
   content: string;
   tokens: {
-    prompt: number;
+    prompt: number ;
     completion: number;
     total: number;
   };

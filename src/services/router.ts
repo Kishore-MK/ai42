@@ -42,11 +42,12 @@ export function selectModel(
 
   if (complexity === 'complex' || tokenCount > 500) {
     return {
-      model: 'gemini-2.5-pro',
-      provider: 'gemini',
+      model: 'llama-3.3-70b-versatile',
+      provider: 'groq',
       reason: 'Complex query requiring advanced model'
     };
   }
+
 
   return {
     model: 'gemini-2.5-flash',
@@ -56,7 +57,8 @@ export function selectModel(
 }
 
 function getProvider(model: ModelIdentifier): 'groq' | 'gemini' {
-  if (model.startsWith('groq-')) return 'groq';
+  if (model.startsWith('llama-')) return 'groq';
+  if (model.startsWith('openai/')) return 'groq';
   if (model.startsWith('gemini-')) return 'gemini';
   throw new Error(`Unknown provider for model: ${model}`);
 }

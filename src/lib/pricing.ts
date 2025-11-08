@@ -1,11 +1,11 @@
 import { ModelIdentifier } from '../types/index.js';
 
 const MODEL_PRICING = {
-  'groq-llama-70b': {
+  'llama-3.3-70b-versatile': {
     promptCostPer1M: 0.59,
     completionCostPer1M: 0.79
   },
-  'groq-llama-8b': {
+   'openai/gpt-oss-120b': {
     promptCostPer1M: 0.05,
     completionCostPer1M: 0.08
   },
@@ -24,7 +24,7 @@ const LAMPORTS_PER_USDC = 1_000_000;
 
 export function calculateCost(
   model: ModelIdentifier,
-  promptTokens: number,
+  promptTokens: number ,
   completionTokens: number
 ): number {
   const pricing = MODEL_PRICING[model];

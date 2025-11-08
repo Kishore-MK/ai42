@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import { config } from '../config/env.js'; 
+import { config } from '../config/env.js';
+import { validator } from 'hono/validator';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatRequest, ChatResponse, ModelIdentifier, Priority } from '../types/index.js';
 import { callGemini } from '../services/gemini.js';
@@ -12,8 +13,8 @@ import { payments } from '../db/schema.js';
 import { X402PaymentHandler } from 'x402-solana/server';
 import { SolanaNetwork } from 'x402-solana/types';
 import { getSignerAddress } from '../lib/helper.js';
+import { callGroq } from '../services/groq.js';
  
-
 const chatRouter = new Hono();
 
 const x402 = new X402PaymentHandler({
@@ -28,7 +29,7 @@ chatRouter.use(
       config.address as `0x${string}`,
       {
         "/chat": {
-          price: "$0.025",
+          price: "$0.1",
           network: config.network as Network,
         },
       },
@@ -38,8 +39,6 @@ chatRouter.use(
     ),
   );
 
-
-   
 chatRouter.post(
   '/',
   async (c) => {
@@ -47,7 +46,6 @@ chatRouter.post(
     const body = await c.req.json() as ChatRequest; 
     const paymentHeader = x402.extractPayment(c.req.header()) 
     const walletAddress = await getSignerAddress(paymentHeader || "");
-    
     const { message, model: modelOverride, priority, stream } = body;
 
     if (stream) {
@@ -85,10 +83,12 @@ chatRouter.post(
     try {
       if (selectedModel.startsWith('gemini-')) {
         llmResponse = await callGemini(message, selectedModel);
+      } else if (selectedModel.startsWith('llama-') || selectedModel.startsWith('openai/')) {
+        llmResponse = await callGroq(message, selectedModel);
       } else {
         return c.json({ 
-          error: 'Groq not implemented yet' 
-        }, 501);
+          error: 'Unsupported model provider' 
+        }, 400);
       }
     } catch (error: any) {
       return c.json({ 
@@ -115,7 +115,7 @@ chatRouter.post(
         cacheHit: false
       });
       await db.insert(payments).values({ 
-        walletAddress ,
+        walletAddress,
         amount: cost.toString(),
         status: 'completed',
         modelUsed: selectedModel,
