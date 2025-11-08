@@ -1,0 +1,72 @@
+export function selectModel(message, priority, modelOverride) {
+    if (modelOverride) {
+        return {
+            model: modelOverride,
+            provider: getProvider(modelOverride),
+            reason: 'User specified model'
+        };
+    }
+    const tokenCount = estimateTokens(message);
+    const complexity = analyzeComplexity(message);
+    if (priority === 'fast') {
+        return {
+            model: 'gemini-2.5-flash',
+            provider: 'gemini',
+            reason: 'Fast priority - using fastest model'
+        };
+    }
+    if (priority === 'cheap') {
+        return {
+            model: 'gemini-2.5-flash',
+            provider: 'gemini',
+            reason: 'Cheap priority - using most cost-effective model'
+        };
+    }
+    if (tokenCount < 100 && complexity === 'simple') {
+        return {
+            model: 'gemini-2.5-flash',
+            provider: 'gemini',
+            reason: 'Simple short query - using fast model'
+        };
+    }
+    if (complexity === 'complex' || tokenCount > 500) {
+        return {
+            model: 'llama-3.3-70b-versatile',
+            provider: 'groq',
+            reason: 'Complex query requiring advanced model'
+        };
+    }
+    return {
+        model: 'gemini-2.5-flash',
+        provider: 'gemini',
+        reason: 'Default selection for balanced performance'
+    };
+}
+function getProvider(model) {
+    if (model.startsWith('llama-'))
+        return 'groq';
+    if (model.startsWith('openai/'))
+        return 'groq';
+    if (model.startsWith('gemini-'))
+        return 'gemini';
+    throw new Error(`Unknown provider for model: ${model}`);
+}
+function estimateTokens(text) {
+    return Math.ceil(text.length / 4);
+}
+function analyzeComplexity(text) {
+    const lowerText = text.toLowerCase();
+    const complexKeywords = [
+        'analyze', 'explain', 'compare', 'evaluate', 'detailed',
+        'comprehensive', 'architecture', 'algorithm', 'implement'
+    ];
+    const hasComplexKeywords = complexKeywords.some(kw => lowerText.includes(kw));
+    const wordCount = text.split(/\s+/).length;
+    if (hasComplexKeywords || wordCount > 50) {
+        return 'complex';
+    }
+    if (wordCount > 20) {
+        return 'medium';
+    }
+    return 'simple';
+}

@@ -1,0 +1,110 @@
+import { Hono } from 'hono';
+import { config } from '../config/env.js';
+import { v4 as uuidv4 } from 'uuid';
+import { callGemini } from '../services/gemini.js';
+import { selectModel } from '../services/router.js';
+import { generateHash, getCached, setCache } from '../services/cache.js';
+import { calculateCost, calculateCachedCost } from '../lib/pricing.js';
+import { paymentMiddleware } from "x402-hono";
+import { db } from '../db/index.js';
+import { payments } from '../db/schema.js';
+import { X402PaymentHandler } from 'x402-solana/server';
+import { getSignerAddress } from '../lib/helper.js';
+import { callGroq } from '../services/groq.js';
+const chatRouter = new Hono();
+const x402 = new X402PaymentHandler({
+    network: config.network,
+    treasuryAddress: config.address,
+    facilitatorUrl: config.facilitatorUrl,
+});
+chatRouter.use(paymentMiddleware(config.address, {
+    "/chat": {
+        price: "$0.1",
+        network: config.network,
+    },
+}, {
+    url: config.facilitatorUrl,
+}));
+chatRouter.post('/', async (c) => {
+    const requestId = uuidv4();
+    const body = await c.req.json();
+    const paymentHeader = x402.extractPayment(c.req.header());
+    const walletAddress = await getSignerAddress(paymentHeader || "");
+    const { message, model: modelOverride, priority, stream } = body;
+    if (stream) {
+        return c.json({
+            error: 'Streaming not yet implemented'
+        }, 501);
+    }
+    const routingDecision = selectModel(message, priority, modelOverride);
+    const selectedModel = routingDecision.model;
+    const requestHash = generateHash(selectedModel, message);
+    const cached = getCached(requestHash);
+    if (cached) {
+        const cachedCost = calculateCachedCost(calculateCost(selectedModel, cached.tokens.prompt, cached.tokens.completion));
+        const response = {
+            content: cached.content,
+            model: selectedModel,
+            tokens: cached.tokens,
+            cost: cachedCost,
+            cached: true,
+            requestId,
+            timestamp: Date.now()
+        };
+        return c.json(response);
+    }
+    let llmResponse;
+    try {
+        if (selectedModel.startsWith('gemini-')) {
+            llmResponse = await callGemini(message, selectedModel);
+        }
+        else if (selectedModel.startsWith('llama-') || selectedModel.startsWith('openai/')) {
+            llmResponse = await callGroq(message, selectedModel);
+        }
+        else {
+            return c.json({
+                error: 'Unsupported model provider'
+            }, 400);
+        }
+    }
+    catch (error) {
+        return c.json({
+            error: 'LLM service error',
+            details: error.message
+        }, 500);
+    }
+    const cost = calculateCost(selectedModel, llmResponse.tokens.prompt, llmResponse.tokens.completion);
+    setCache(requestHash, llmResponse);
+    try {
+        console.log('Saving payment:', {
+            walletAddress,
+            amount: cost.toString(),
+            status: 'completed',
+            modelUsed: selectedModel,
+            tokensUsed: llmResponse.tokens.total,
+            cacheHit: false
+        });
+        await db.insert(payments).values({
+            walletAddress,
+            amount: cost.toString(),
+            status: 'completed',
+            modelUsed: selectedModel,
+            tokensUsed: llmResponse.tokens.total,
+            cacheHit: false
+        });
+    }
+    catch (dbError) {
+        console.error('Failed to log payment:', dbError);
+    }
+    const response = {
+        content: llmResponse.content,
+        model: selectedModel,
+        tokens: llmResponse.tokens,
+        cost,
+        cached: false,
+        requestId,
+        timestamp: Date.now()
+    };
+    return c.json(response);
+});
+export default chatRouter;
